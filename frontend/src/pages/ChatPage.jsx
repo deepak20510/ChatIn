@@ -8,7 +8,7 @@ import ChatContainer from "../components/ChatContainer";
 import NoConversationPlaceholder from "../components/NoConversationPlaceholder";
 
 function ChatPage() {
-  const { aciveTab, selectedUser } = useChatStore();
+  const { activeTab, selectedUser } = useChatStore();
   return (
     <div className="relative w-full max-w-6xl h-[800px]">
       <BorderAnimatedContainer>
@@ -17,7 +17,7 @@ function ChatPage() {
           <ProfileHeader />
           <ActiveTabSwitch />
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
-            {aciveTab === "chats" ? <ChatList /> : <ContactList />}
+            {activeTab === "chats" ? <ChatList /> : <ContactList />}
           </div>
         </div>
 
