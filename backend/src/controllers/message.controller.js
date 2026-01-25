@@ -29,7 +29,7 @@ export const getMessagesByUserId = async (req, res) => {
     res.status(200).json(messages);
   } catch (error) {
     console.log("Error in getMessages controller: ", error.message);
-    res.status(500).json(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
@@ -66,7 +66,7 @@ export const sendMessage = async (req, res) => {
     await newMessage.save();
     res.status(201).json(newMessage);
   } catch (error) {
-    console.log("Error in sendmessage controller: ", error.messages);
+    console.log("Error in sendmessage controller: ", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -84,8 +84,8 @@ export const getChatPartners = async (req, res) => {
         messages.map((msg) =>
           msg.senderId.toString() === loggedInUserId.toString()
             ? msg.receiverId.toString()
-            : msg.senderId.toString()
-        )
+            : msg.senderId.toString(),
+        ),
       ),
     ];
 
