@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import ChatHeader from "./ChatHeader";
@@ -9,10 +9,16 @@ import MessagesLoadingState from "./MessagesLoadingState";
 function ChatContainer() {
   const { selectedUser, getMessagesByUserId, messages, isMessagesLoading } =
     useChatStore();
-  const authUser = useAuthStore();
+  const { authUser } = useAuthStore();
+  const messageEndRef = useRef(null);
   useEffect(() => {
     getMessagesByUserId(selectedUser._id);
   }, [selectedUser, getMessagesByUserId]);
+  useEffect(() => {
+    if (messageEndRef.current) {
+      messageEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
   return (
     <>
       <ChatHeader />
@@ -22,11 +28,11 @@ function ChatContainer() {
             {messages.map((msg) => (
               <div
                 key={msg._id}
-                className={`chat ${msg.senderId === authUser._id ? "chat-end" : "chat-start"}`}
+                className={`chat ${msg.senderId === authUser?._id ? "chat-end" : "chat-start"}`}
               >
                 <div
                   className={`chat-bubble relative ${
-                    msg.senderId === authUser._id
+                    msg.senderId === authUser?._id
                       ? "bg-cyan-600 text-white"
                       : "bg-slate-800 text-slate-200"
                   }`}
@@ -48,6 +54,7 @@ function ChatContainer() {
                 </div>
               </div>
             ))}
+            <div ref={messageEndRef} />
           </div>
         ) : isMessagesLoading ? (
           <MessagesLoadingState />
