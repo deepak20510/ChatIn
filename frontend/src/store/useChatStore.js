@@ -20,6 +20,31 @@ export const useChatStore = create((set, get) => ({
   setActiveTab: (tab) => set({ activeTab: tab }),
   setSelectedUser: (user) => set({ selectedUser: user }),
 
+  subscribeToMessages: () => {
+    const { selectedUser } = get();
+    const { socket } = useAuthStore.getState();
+
+    if (!socket || !selectedUser) return;
+
+    // Listen for new messages
+    socket.on("newMessage", (newMessage) => {
+      const { selectedUser, messages } = get();
+      // Only add the message if it's from/to the currently selected user
+      if (
+        newMessage.senderId === selectedUser._id.toString() ||
+        newMessage.receiverId === selectedUser._id.toString()
+      ) {
+        set({ messages: [...messages, newMessage] });
+      }
+    });
+  },
+
+  unsubscribeFromMessages: () => {
+    const { socket } = useAuthStore.getState();
+    if (!socket) return;
+    socket.off("newMessage");
+  },
+
   getAllContacts: async () => {
     set({ isUsersLoading: true });
     try {
@@ -67,14 +92,20 @@ export const useChatStore = create((set, get) => ({
       isOptimistic: true, // flag to identify optimistic messages (optional)
     };
     // immidetaly update the ui by adding the message
-    set({ messages: [...messages, optimisticMessage] });
+    const messagesWithOptimistic = [...messages, optimisticMessage];
+    set({ messages: messagesWithOptimistic });
     try {
       const res = await axiosInstance.post(
         `/messages/send/${selectedUser._id}`,
         messageData,
       );
-      set({ messages: messages.concat(res.data) });
+      // Replace optimistic message with real message from server
+      const updatedMessages = messagesWithOptimistic.map((msg) =>
+        msg._id === tempId ? res.data : msg,
+      );
+      set({ messages: updatedMessages });
     } catch (error) {
+      // Remove optimistic message on error
       set({ messages: messages });
       toast.error(error.response?.data?.message || "Something went wrong");
     }
