@@ -22,19 +22,34 @@ export const useChatStore = create((set, get) => ({
 
   subscribeToMessages: () => {
     const { selectedUser } = get();
-    const { socket } = useAuthStore.getState();
+    const { socket, authUser } = useAuthStore.getState();
 
     if (!socket || !selectedUser) return;
 
     // Listen for new messages
     socket.on("newMessage", (newMessage) => {
-      const { selectedUser, messages } = get();
+      const { selectedUser, messages, isSoundEnabled } = get();
       // Only add the message if it's from/to the currently selected user
       if (
         newMessage.senderId === selectedUser._id.toString() ||
         newMessage.receiverId === selectedUser._id.toString()
       ) {
         set({ messages: [...messages, newMessage] });
+
+        // Play notification sound if message is from the other user
+        if (
+          authUser &&
+          newMessage.senderId !== authUser._id.toString() &&
+          isSoundEnabled
+        ) {
+          try {
+            const audio = new Audio("/sounds/notification.mp3");
+            audio.volume = 1;
+            audio.play();
+          } catch (err) {
+            console.log("Error playing notification sound:", err);
+          }
+        }
       }
     });
   },
