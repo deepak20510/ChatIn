@@ -27,13 +27,13 @@ function ProfileHeader() {
   };
 
   return (
-    <div className="p-6 border-slate-700/50 ">
+    <div className="p-6 lg:p-8 border-b border-slate-700/50 bg-slate-800/30">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           {/*AVATAR*/}
           <div className="avatar online">
             <button
-              className="size-14 rounded-full overflow-hidden relative group"
+              className="size-14 lg:size-16 rounded-full overflow-hidden relative group ring-2 ring-slate-700/50 hover:ring-cyan-500/50 transition-all duration-300"
               onClick={() => fileInputRef.current.click()}
             >
               {" "}
@@ -42,8 +42,8 @@ function ProfileHeader() {
                 alt="User Image"
                 className="size-full object-cover"
               />
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                <span className="text-white text-xs">Change</span>
+              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
+                <span className="text-white text-xs font-medium">Change</span>
               </div>
             </button>
             <input
@@ -56,25 +56,20 @@ function ProfileHeader() {
           </div>
           {/*USERNAME*/}
           <div>
-            <h3 className="text-slate-200 font-medium text-base max-w-[180px] truncate">
+            <h3 className="text-slate-100 font-semibold text-base lg:text-lg max-w-[180px] lg:max-w-[200px] truncate">
               {authUser.fullName}
             </h3>
-            <p className="text-slate-400 text-xs">Online</p>
+            <p className="text-cyan-400/80 text-xs lg:text-sm flex items-center gap-1.5">
+              <span className="w-2 h-2 bg-green-500 rounded-full inline-block"></span>
+              Online
+            </p>
           </div>
         </div>
         {/* BUTTONS */}
-        <div className="flex gap-4 items-center">
-          {/* LOGOUT BTN */}
-          <button
-            className="text-slate-400 hover:text-slate-200 transition-colors"
-            onClick={logout}
-          >
-            <LogOutIcon className="size-5" />
-          </button>
-
+        <div className="flex gap-3 lg:gap-4 items-center">
           {/* SOUND TOGGLE BTN */}
           <button
-            className="text-slate-400 hover:text-slate-200 transition-colors"
+            className="p-2.5 rounded-xl bg-slate-700/30 text-slate-400 hover:text-cyan-400 hover:bg-slate-700/50 transition-all duration-200"
             onClick={() => {
               // play click sound before toggling
               mouseClickSound.currentTime = 0; // reset to start
@@ -83,12 +78,22 @@ function ProfileHeader() {
                 .catch((error) => console.log("Audio play failed:", error));
               toggleSound();
             }}
+            title={isSoundEnabled ? "Mute sounds" : "Enable sounds"}
           >
             {isSoundEnabled ? (
               <Volume2Icon className="size-5" />
             ) : (
               <VolumeOffIcon className="size-5" />
             )}
+          </button>
+
+          {/* LOGOUT BTN */}
+          <button
+            className="p-2.5 rounded-xl bg-slate-700/30 text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
+            onClick={logout}
+            title="Logout"
+          >
+            <LogOutIcon className="size-5" />
           </button>
         </div>
       </div>
