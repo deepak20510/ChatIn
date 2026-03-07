@@ -16,7 +16,7 @@ axiosInstance.interceptors.request.use(
   (error) => {
     console.error("Request error:", error);
     return Promise.reject(error);
-  }
+  },
 );
 
 // Response interceptor for debugging
@@ -30,5 +30,5 @@ axiosInstance.interceptors.response.use(
       console.error("Unauthorized - Token might be expired or invalid");
     }
     return Promise.reject(error);
-  }
+  },
 );

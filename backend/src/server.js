@@ -24,20 +24,20 @@ if (ENV.CLIENT_URL) {
 const corsOptions = {
   origin: function (origin, callback) {
     console.log("CORS request from origin:", origin); // debug log
-    
+
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
+
     // Check exact matches
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-    
+
     // Check regex for Vercel deployments (.vercel.app)
     if (/\.vercel\.app$/.test(origin)) {
       return callback(null, true);
     }
-    
+
     console.log("CORS origin rejected:", origin);
     callback(new Error("Not allowed by CORS"));
   },

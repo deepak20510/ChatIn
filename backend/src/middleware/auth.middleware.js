@@ -6,8 +6,11 @@ export const protectRoute = async (req, res, next) => {
   try {
     // Debug: Log cookies and headers
     console.log("Auth Guard - Cookies:", Object.keys(req.cookies));
-    console.log("Auth Guard - Authorization header:", req.headers.authorization);
-    
+    console.log(
+      "Auth Guard - Authorization header:",
+      req.headers.authorization,
+    );
+
     // Check for JWT token in cookies
     const token = req.cookies.jwt;
     if (!token) {
@@ -23,7 +26,7 @@ export const protectRoute = async (req, res, next) => {
       console.log("Auth Guard - Invalid token");
       return res.status(401).json({ message: "Unauthorized - Invalid token" });
     }
-    
+
     // Fetch user and exclude password
     const user = await User.findById(decoded.userId).select("-password");
     if (!user) {
@@ -35,15 +38,15 @@ export const protectRoute = async (req, res, next) => {
     next();
   } catch (error) {
     console.log("Error in protectRoute middleware:", error.message);
-    
+
     if (error.name === "JsonWebTokenError") {
       return res.status(401).json({ message: "Unauthorized - Invalid token" });
     }
-    
+
     if (error.name === "TokenExpiredError") {
       return res.status(401).json({ message: "Unauthorized - Token expired" });
     }
-    
+
     res.status(500).json({ message: "Internal server error" });
   }
 };
