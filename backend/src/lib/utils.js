@@ -15,10 +15,10 @@ export const generateToken = (userId, res) => {
   const isDevelopment = ENV.NODE_ENV === "development";
 
   res.cookie("jwt", token, {
-    maxAge: 7 * 24 * 60 * 60 * 1000,
     httpOnly: true,
-    sameSite: isDevelopment ? "lax" : "none",
-    secure: !isDevelopment,
+    sameSite: "none", // required for cross-site cookies
+    secure: true, // required when sameSite = none
+    maxAge: 7 * 24 * 60 * 60 * 1000,
     path: "/",
   });
 
