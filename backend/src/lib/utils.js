@@ -12,9 +12,7 @@ export const generateToken = (userId, res) => {
     expiresIn: "7d",
   });
 
-  // For cross-domain (Vercel to Render), use sameSite=none + secure=true
-  const isDevelopment =
-    !process.env.NODE_ENV || process.env.NODE_ENV === "development";
+  const isDevelopment = ENV.NODE_ENV === "development";
 
   res.cookie("jwt", token, {
     maxAge: 7 * 24 * 60 * 60 * 1000,
