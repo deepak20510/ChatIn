@@ -13,26 +13,40 @@ const PORT = ENV.PORT || 3000;
 app.use(express.json({ limit: "5mb" }));
 
 // CORS configuration for production and development
-const corsOrigins = [
+const allowedOrigins = [
   "http://localhost:5173", // dev frontend
 ];
 
-// Add production URLs
 if (ENV.CLIENT_URL) {
-  corsOrigins.push(ENV.CLIENT_URL);
+  allowedOrigins.push(ENV.CLIENT_URL);
 }
 
-// Add Vercel deployment domains
-corsOrigins.push(/\.vercel\.app$/);
+const corsOptions = {
+  origin: function (origin, callback) {
+    console.log("CORS request from origin:", origin); // debug log
+    
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check exact matches
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Check regex for Vercel deployments (.vercel.app)
+    if (/\.vercel\.app$/.test(origin)) {
+      return callback(null, true);
+    }
+    
+    console.log("CORS origin rejected:", origin);
+    callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
 
-app.use(
-  cors({
-    origin: corsOrigins,
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  }),
-);
+app.use(cors(corsOptions));
 
 app.use(cookieParser());
 
