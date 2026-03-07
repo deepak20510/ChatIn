@@ -12,12 +12,10 @@ export const generateToken = (userId, res) => {
     expiresIn: "7d",
   });
 
-  const isDevelopment = ENV.NODE_ENV === "development";
-
   res.cookie("jwt", token, {
     httpOnly: true,
-    sameSite: "none", // required for cross-site cookies
-    secure: true, // required when sameSite = none
+    secure: true,           // required for cross-domain cookies
+    sameSite: "none",       // required for Vercel → Render
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: "/",
   });
