@@ -50,6 +50,11 @@ app.use(cors(corsOptions));
 
 app.use(cookieParser());
 
+// Trust proxy to ensure secure cookies work behind reverse proxy
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
+
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
