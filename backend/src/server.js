@@ -14,9 +14,13 @@ app.use(express.json({ limit: "5mb" }));
 
 app.use(
   cors({
-    origin: ["http://localhost:5173", ENV.CLIENT_URL],
+    origin: [
+      "http://localhost:5173",
+      ENV.CLIENT_URL,
+      /\.vercel\.app$/, // allow all vercel preview deployments
+    ],
     credentials: true,
-  })
+  }),
 );
 
 app.use(cookieParser());
