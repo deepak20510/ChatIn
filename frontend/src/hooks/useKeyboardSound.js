@@ -1,9 +1,9 @@
 // audio setup
 const keyStrokeSounds = [
-  "/sounds/keystroke1.mp3",
-  "/sounds/keystroke2.mp3",
-  "/sounds/keystroke3.mp3",
-  "/sounds/keystroke4.mp3",
+  `${import.meta.env.BASE_URL}sounds/keystroke1.mp3`,
+  `${import.meta.env.BASE_URL}sounds/keystroke2.mp3`,
+  `${import.meta.env.BASE_URL}sounds/keystroke3.mp3`,
+  `${import.meta.env.BASE_URL}sounds/keystroke4.mp3`,
 ];
 
 function useKeyboardSound() {
