@@ -1,6 +1,12 @@
 import jwt from "jsonwebtoken";
 import { ENV } from "./env.js";
 
+// Token expiration times
+export const TOKEN_EXPIRY = {
+  ACCESS: "15m", // Short-lived access token
+  REFRESH: "30d", // Long-lived refresh token
+};
+
 export const generateToken = (userId, res) => {
   const { JWT_SECRET, NODE_ENV } = ENV;
 
@@ -8,19 +14,37 @@ export const generateToken = (userId, res) => {
     throw new Error("JWT_SECRET is not configured");
   }
 
-  const token = jwt.sign({ userId }, JWT_SECRET, {
-    expiresIn: "7d",
+  // Generate short-lived access token
+  const accessToken = jwt.sign({ userId, type: "access" }, JWT_SECRET, {
+    expiresIn: TOKEN_EXPIRY.ACCESS,
+  });
+
+  // Generate long-lived refresh token
+  const refreshToken = jwt.sign({ userId, type: "refresh" }, JWT_SECRET, {
+    expiresIn: TOKEN_EXPIRY.REFRESH,
   });
 
   const isProduction = NODE_ENV === "production";
-
-  res.cookie("jwt", token, {
+  const cookieOptions = {
     httpOnly: true,
-    secure: isProduction,           // truze in production, false in development
-    sameSite: isProduction ? "none" : "lax",  // "none" for cross-domain in production
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
     path: "/",
+  };
+
+  // Set access token cookie (15 minutes)
+  res.cookie("jwt", accessToken, {
+    ...cookieOptions,
+    maxAge: 15 * 60 * 1000, // 15 minutes
   });
 
-  return token;
+  // Set refresh token cookie (30 days)
+  res.cookie("refreshToken", refreshToken, {
+    ...cookieOptions,
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+  });
+
+  console.log(`✅ Tokens generated for user: ${userId}`);
+
+  return { accessToken, refreshToken };
 };
