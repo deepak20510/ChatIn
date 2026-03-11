@@ -20,28 +20,32 @@ export const generateToken = (userId, res) => {
   console.log("User ID:", userId);
   console.log("NODE_ENV:", NODE_ENV);
   console.log("Is Production:", isProduction);
-  console.log("JWT_SECRET exists:", !!JWT_SECRET);
 
   // For now, use simple long-lived tokens to avoid refresh complexity
   const token = jwt.sign({ userId }, JWT_SECRET, {
     expiresIn: "7d",
   });
 
+  // More permissive cookie settings for cross-domain
   const cookieOptions = {
     httpOnly: true,
     secure: isProduction,
     sameSite: isProduction ? "none" : "lax",
     path: "/",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    // Add domain for production
+    ...(isProduction && { domain: ".onrender.com" })
   };
 
   console.log("Cookie options:", cookieOptions);
-  console.log("Token length:", token.length);
 
   // Set main JWT cookie
   res.cookie("jwt", token, cookieOptions);
 
-  console.log("✅ Cookie set with options:", cookieOptions);
+  // ALSO set as a backup header for debugging
+  res.setHeader('X-Auth-Token', token);
+
+  console.log("✅ Cookie and header set");
   console.log("===============================");
 
   return token;
