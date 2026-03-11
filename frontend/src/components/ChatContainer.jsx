@@ -19,8 +19,11 @@ function ChatContainer() {
   const messageEndRef = useRef(null);
 
   useEffect(() => {
-    getMessagesByUserId(selectedUser._id);
-    subscribeToMessages();
+    // Only fetch messages if user is authenticated and user is selected
+    if (authUser && selectedUser) {
+      getMessagesByUserId(selectedUser._id);
+      subscribeToMessages();
+    }
 
     return () => {
       unsubscribeFromMessages();
@@ -30,6 +33,7 @@ function ChatContainer() {
     getMessagesByUserId,
     subscribeToMessages,
     unsubscribeFromMessages,
+    authUser,
   ]);
 
   useEffect(() => {

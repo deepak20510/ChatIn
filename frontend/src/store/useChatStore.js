@@ -61,34 +61,67 @@ export const useChatStore = create((set, get) => ({
   },
 
   getAllContacts: async () => {
+    const { authUser } = useAuthStore.getState();
+    if (!authUser) {
+      console.log("No authenticated user - skipping contacts fetch");
+      return;
+    }
+
     set({ isUsersLoading: true });
     try {
       const res = await axiosInstance.get("/messages/contacts");
       set({ allContacts: res.data });
     } catch (error) {
-      toast.error(error.response.data.message);
+      if (error.response?.status === 401) {
+        console.log("Authentication failed - user needs to re-login");
+        useAuthStore.getState().logout();
+      } else {
+        toast.error(error.response?.data?.message || "Failed to fetch contacts");
+      }
     } finally {
       set({ isUsersLoading: false });
     }
   },
   getMyChatPartners: async () => {
+    const { authUser } = useAuthStore.getState();
+    if (!authUser) {
+      console.log("No authenticated user - skipping chats fetch");
+      return;
+    }
+
     set({ isUsersLoading: true });
     try {
       const res = await axiosInstance.get("/messages/chats");
       set({ chats: res.data });
     } catch (error) {
-      toast.error(error.response.data.message);
+      if (error.response?.status === 401) {
+        console.log("Authentication failed - user needs to re-login");
+        useAuthStore.getState().logout();
+      } else {
+        toast.error(error.response?.data?.message || "Failed to fetch chats");
+      }
     } finally {
       set({ isUsersLoading: false });
     }
   },
   getMessagesByUserId: async (userId) => {
+    const { authUser } = useAuthStore.getState();
+    if (!authUser) {
+      console.log("No authenticated user - skipping messages fetch");
+      return;
+    }
+
     set({ isMessagesLoading: true });
     try {
       const res = await axiosInstance.get(`/messages/${userId}`);
       set({ messages: res.data });
     } catch (error) {
-      toast.error(error.response?.data?.message || "Something went wrong");
+      if (error.response?.status === 401) {
+        console.log("Authentication failed - user needs to re-login");
+        useAuthStore.getState().logout();
+      } else {
+        toast.error(error.response?.data?.message || "Failed to fetch messages");
+      }
     } finally {
       set({ isMessagesLoading: false });
     }
@@ -96,6 +129,13 @@ export const useChatStore = create((set, get) => ({
   sendMessage: async (messageData) => {
     const { selectedUser, messages } = get();
     const { authUser } = useAuthStore.getState();
+    
+    if (!authUser) {
+      console.log("No authenticated user - cannot send message");
+      toast.error("Please login to send messages");
+      return;
+    }
+
     const tempId = `temp-${Date.now()}`;
     const optimisticMessage = {
       _id: tempId,
@@ -122,7 +162,12 @@ export const useChatStore = create((set, get) => ({
     } catch (error) {
       // Remove optimistic message on error
       set({ messages: messages });
-      toast.error(error.response?.data?.message || "Something went wrong");
+      if (error.response?.status === 401) {
+        console.log("Authentication failed - user needs to re-login");
+        useAuthStore.getState().logout();
+      } else {
+        toast.error(error.response?.data?.message || "Failed to send message");
+      }
     }
   },
 }));

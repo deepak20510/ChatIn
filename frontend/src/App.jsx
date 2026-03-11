@@ -12,8 +12,14 @@ function App() {
   const { checkAuth, isCheckingAuth, authUser } = useAuthStore();
 
   useEffect(() => {
-    // Simple approach: always check auth, but handle 401 gracefully
-    checkAuth();
+    // Only check auth if there might be cookies
+    const hasCookies = document.cookie.includes('jwt=');
+    if (hasCookies) {
+      checkAuth();
+    } else {
+      // No JWT cookie, skip auth check
+      useAuthStore.setState({ isCheckingAuth: false, authUser: null });
+    }
   }, []);
 
   if (isCheckingAuth) return <PageLoader />;
