@@ -26,15 +26,13 @@ export const generateToken = (userId, res) => {
     expiresIn: "7d",
   });
 
-  // More permissive cookie settings for cross-domain
+  // Simplified cookie settings for cross-domain
   const cookieOptions = {
     httpOnly: true,
     secure: isProduction,
     sameSite: isProduction ? "none" : "lax",
     path: "/",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    // Add domain for production
-    ...(isProduction && { domain: ".onrender.com" })
   };
 
   console.log("Cookie options:", cookieOptions);
@@ -42,10 +40,7 @@ export const generateToken = (userId, res) => {
   // Set main JWT cookie
   res.cookie("jwt", token, cookieOptions);
 
-  // ALSO set as a backup header for debugging
-  res.setHeader('X-Auth-Token', token);
-
-  console.log("✅ Cookie and header set");
+  console.log("✅ Cookie set");
   console.log("===============================");
 
   return token;

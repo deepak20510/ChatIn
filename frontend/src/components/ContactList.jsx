@@ -14,7 +14,7 @@ function ContactList() {
     if (authUser) {
       getAllContacts();
     }
-  }, [getAllContacts, authUser]);
+  }, [authUser]); // Removed getAllContacts from dependencies to prevent loops
 
   if (isUsersLoading) return <UsersLoadingSkeleton />;
 

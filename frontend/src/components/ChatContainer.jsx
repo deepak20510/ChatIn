@@ -28,13 +28,7 @@ function ChatContainer() {
     return () => {
       unsubscribeFromMessages();
     };
-  }, [
-    selectedUser,
-    getMessagesByUserId,
-    subscribeToMessages,
-    unsubscribeFromMessages,
-    authUser,
-  ]);
+  }, [selectedUser, authUser]); // Removed function dependencies to prevent loops
 
   useEffect(() => {
     if (messageEndRef.current) {

@@ -14,7 +14,7 @@ function ChatsList() {
     if (authUser) {
       getMyChatPartners();
     }
-  }, [getMyChatPartners, authUser]);
+  }, [authUser]); // Removed getMyChatPartners from dependencies to prevent loops
 
   if (isUsersLoading) return <UsersLoadingSkeleton />;
   if (chats.length === 0) return <NoChatsFound />;
