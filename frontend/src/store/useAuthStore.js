@@ -20,10 +20,14 @@ export const useAuthStore = create((set, get) => ({
       get().connectSocket();
     } catch (error) {
       console.log("Error in authCheck:", error);
-      if (error.response?.status === 401) {
-        console.log("Token expired or invalid - user needs to re-login");
+      // Only set authUser to null for actual auth errors, not network errors
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        console.log("Authentication failed - user needs to re-login");
+        set({ authUser: null });
+      } else {
+        console.log("Network or server error during auth check");
+        // Don't clear authUser for network errors, just log them
       }
-      set({ authUser: null });
     } finally {
       set({ isCheckingAuth: false });
     }
