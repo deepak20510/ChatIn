@@ -109,10 +109,6 @@ function LoginPage() {
                   src="/login.png"
                   alt="People using mobile devices"
                   className="w-full h-auto object-contain"
-                  onError={(e) => {
-                    console.log("Login image failed to load");
-                    e.target.style.display = 'none';
-                  }}
                 />
                 <div className="mt-6 text-center">
                   <h3 className="text-xl font-medium text-cyan-400">
