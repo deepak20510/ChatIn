@@ -7,11 +7,14 @@ function ContactList() {
   const { getAllContacts, allContacts, setSelectedUser, isUsersLoading } =
     useChatStore();
 
-  const { onlineUsers } = useAuthStore();
+  const { onlineUsers, authUser } = useAuthStore();
 
   useEffect(() => {
-    getAllContacts();
-  }, [getAllContacts]);
+    // Only fetch contacts if user is authenticated
+    if (authUser) {
+      getAllContacts();
+    }
+  }, [getAllContacts, authUser]);
 
   if (isUsersLoading) return <UsersLoadingSkeleton />;
 

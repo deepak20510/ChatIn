@@ -12,6 +12,7 @@ function App() {
   const { checkAuth, isCheckingAuth, authUser } = useAuthStore();
 
   useEffect(() => {
+    // Simple approach: always check auth, but handle 401 gracefully
     checkAuth();
   }, []);
 

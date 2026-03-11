@@ -7,11 +7,14 @@ import { useAuthStore } from "../store/useAuthStore";
 function ChatsList() {
   const { getMyChatPartners, chats, isUsersLoading, setSelectedUser } =
     useChatStore();
-  const { onlineUsers } = useAuthStore();
+  const { onlineUsers, authUser } = useAuthStore();
 
   useEffect(() => {
-    getMyChatPartners();
-  }, [getMyChatPartners]);
+    // Only fetch chats if user is authenticated
+    if (authUser) {
+      getMyChatPartners();
+    }
+  }, [getMyChatPartners, authUser]);
 
   if (isUsersLoading) return <UsersLoadingSkeleton />;
   if (chats.length === 0) return <NoChatsFound />;

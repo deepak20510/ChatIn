@@ -26,7 +26,8 @@ export const useAuthStore = create((set, get) => ({
         set({ authUser: null });
       } else {
         console.log("Network or server error during auth check");
-        // Don't clear authUser for network errors, just log them
+        // For network errors, assume no user is logged in
+        set({ authUser: null });
       }
     } finally {
       set({ isCheckingAuth: false });
