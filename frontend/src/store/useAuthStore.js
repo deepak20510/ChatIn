@@ -20,6 +20,9 @@ export const useAuthStore = create((set, get) => ({
       get().connectSocket();
     } catch (error) {
       console.log("Error in authCheck:", error);
+      if (error.response?.status === 401) {
+        console.log("Token expired or invalid - user needs to re-login");
+      }
       set({ authUser: null });
     } finally {
       set({ isCheckingAuth: false });

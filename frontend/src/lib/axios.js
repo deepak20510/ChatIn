@@ -8,12 +8,13 @@ export const axiosInstance = axios.create({
 // Ensure credentials are sent with every request
 axiosInstance.defaults.withCredentials = true;
 
-// Response interceptor
+// Response interceptor - handle 401 Unauthorized
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Auth store will handle the redirect
+      // Token expired or invalid - will be handled by useAuthStore
+      console.log("Unauthorized (401): Token may have expired");
     }
     return Promise.reject(error);
   },
