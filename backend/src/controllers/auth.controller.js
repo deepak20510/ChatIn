@@ -82,7 +82,17 @@ export const login = async (req, res) => {
     if (!isPasswordCorrect)
       return res.status(400).json({ message: "Invalid Credentials" });
 
+    console.log("=== LOGIN SUCCESS DEBUG ===");
+    console.log("User ID:", user._id);
+    console.log("NODE_ENV:", ENV.NODE_ENV);
+    console.log("Request Origin:", req.headers.origin);
+    console.log("About to generate token...");
+
     generateToken(user._id, res);
+
+    console.log("Token generated, sending response...");
+    console.log("============================");
+
     res.status(200).json({
       _id: user._id,
       fullName: user.fullName,
