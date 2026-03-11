@@ -12,14 +12,8 @@ function App() {
   const { checkAuth, isCheckingAuth, authUser } = useAuthStore();
 
   useEffect(() => {
-    // Only check auth if there might be cookies
-    const hasCookies = document.cookie.includes('jwt=');
-    if (hasCookies) {
-      checkAuth();
-    } else {
-      // No JWT cookie, skip auth check
-      useAuthStore.setState({ isCheckingAuth: false, authUser: null });
-    }
+    // Simple check - don't worry about cookies, just handle errors gracefully
+    checkAuth();
   }, []);
 
   if (isCheckingAuth) return <PageLoader />;

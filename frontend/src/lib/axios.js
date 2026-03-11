@@ -12,9 +12,9 @@ axiosInstance.defaults.withCredentials = true;
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Silently handle 401 errors - don't log them as they're expected
     if (error.response?.status === 401) {
-      // Just log the 401 error, let the auth store handle it
-      console.log("401 Unauthorized - token may be expired");
+      // Just return the error, let components handle it
     }
     return Promise.reject(error);
   },

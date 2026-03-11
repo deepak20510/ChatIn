@@ -20,15 +20,8 @@ export const useAuthStore = create((set, get) => ({
       get().connectSocket();
     } catch (error) {
       console.log("Error in authCheck:", error);
-      // Only set authUser to null for actual auth errors, not network errors
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        console.log("Authentication failed - user needs to re-login");
-        set({ authUser: null });
-      } else {
-        console.log("Network or server error during auth check");
-        // For network errors, assume no user is logged in
-        set({ authUser: null });
-      }
+      // Silently handle auth errors - don't show to user
+      set({ authUser: null });
     } finally {
       set({ isCheckingAuth: false });
     }
@@ -57,15 +50,13 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await axiosInstance.post("/auth/login", data);
       set({ authUser: res.data });
-
       toast.success("Logged in successfully");
-
       get().connectSocket();
     } catch (error) {
-      const errorMsg =
-        error.response?.data?.message || error.message || "Login failed";
-      toast.error(errorMsg);
       console.error("Login error:", error);
+      // Show user-friendly error message
+      const errorMsg = error.response?.data?.message || "Login failed. Please try again.";
+      toast.error(errorMsg);
     } finally {
       set({ isLoggingIn: false });
     }
@@ -116,18 +107,29 @@ export const useAuthStore = create((set, get) => ({
     const { authUser } = get();
     if (!authUser || get().socket?.connected) return;
 
-    const socket = io(SOCKET_URL, {
-      withCredentials: true,
-    });
+    try {
+      const socket = io(SOCKET_URL, {
+        withCredentials: true,
+        transports: ['websocket', 'polling'], // Add fallback transport
+        timeout: 20000, // Add timeout
+      });
 
-    socket.connect();
+      socket.connect();
+      set({ socket });
 
-    set({ socket });
+      // listen for online users event
+      socket.on("getOnlineUsers", (userIds) => {
+        set({ onlineUsers: userIds });
+      });
 
-    // listen for online users event
-    socket.on("getOnlineUsers", (userIds) => {
-      set({ onlineUsers: userIds });
-    });
+      // Handle connection errors
+      socket.on("connect_error", (error) => {
+        console.log("Socket connection error:", error.message);
+      });
+
+    } catch (error) {
+      console.log("Socket initialization error:", error);
+    }
   },
 
   disconnectSocket: () => {

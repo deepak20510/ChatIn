@@ -62,66 +62,45 @@ export const useChatStore = create((set, get) => ({
 
   getAllContacts: async () => {
     const { authUser } = useAuthStore.getState();
-    if (!authUser) {
-      console.log("No authenticated user - skipping contacts fetch");
-      return;
-    }
+    if (!authUser) return;
 
     set({ isUsersLoading: true });
     try {
       const res = await axiosInstance.get("/messages/contacts");
       set({ allContacts: res.data });
     } catch (error) {
-      if (error.response?.status === 401) {
-        console.log("Authentication failed - user needs to re-login");
-        useAuthStore.getState().logout();
-      } else {
-        toast.error(error.response?.data?.message || "Failed to fetch contacts");
-      }
+      console.log("Error fetching contacts:", error);
+      // Silently handle errors - don't show toast for auth errors
     } finally {
       set({ isUsersLoading: false });
     }
   },
   getMyChatPartners: async () => {
     const { authUser } = useAuthStore.getState();
-    if (!authUser) {
-      console.log("No authenticated user - skipping chats fetch");
-      return;
-    }
+    if (!authUser) return;
 
     set({ isUsersLoading: true });
     try {
       const res = await axiosInstance.get("/messages/chats");
       set({ chats: res.data });
     } catch (error) {
-      if (error.response?.status === 401) {
-        console.log("Authentication failed - user needs to re-login");
-        useAuthStore.getState().logout();
-      } else {
-        toast.error(error.response?.data?.message || "Failed to fetch chats");
-      }
+      console.log("Error fetching chats:", error);
+      // Silently handle errors - don't show toast for auth errors
     } finally {
       set({ isUsersLoading: false });
     }
   },
   getMessagesByUserId: async (userId) => {
     const { authUser } = useAuthStore.getState();
-    if (!authUser) {
-      console.log("No authenticated user - skipping messages fetch");
-      return;
-    }
+    if (!authUser) return;
 
     set({ isMessagesLoading: true });
     try {
       const res = await axiosInstance.get(`/messages/${userId}`);
       set({ messages: res.data });
     } catch (error) {
-      if (error.response?.status === 401) {
-        console.log("Authentication failed - user needs to re-login");
-        useAuthStore.getState().logout();
-      } else {
-        toast.error(error.response?.data?.message || "Failed to fetch messages");
-      }
+      console.log("Error fetching messages:", error);
+      // Silently handle errors - don't show toast for auth errors
     } finally {
       set({ isMessagesLoading: false });
     }
@@ -130,11 +109,7 @@ export const useChatStore = create((set, get) => ({
     const { selectedUser, messages } = get();
     const { authUser } = useAuthStore.getState();
     
-    if (!authUser) {
-      console.log("No authenticated user - cannot send message");
-      toast.error("Please login to send messages");
-      return;
-    }
+    if (!authUser || !selectedUser) return;
 
     const tempId = `temp-${Date.now()}`;
     const optimisticMessage = {
@@ -144,17 +119,17 @@ export const useChatStore = create((set, get) => ({
       text: messageData.text,
       image: messageData.image,
       createdAt: new Date().toISOString(),
-      isOptimistic: true, // flag to identify optimistic messages (optional)
+      isOptimistic: true,
     };
-    // immidetaly update the ui by adding the message
+    
     const messagesWithOptimistic = [...messages, optimisticMessage];
     set({ messages: messagesWithOptimistic });
+    
     try {
       const res = await axiosInstance.post(
         `/messages/send/${selectedUser._id}`,
         messageData,
       );
-      // Replace optimistic message with real message from server
       const updatedMessages = messagesWithOptimistic.map((msg) =>
         msg._id === tempId ? res.data : msg,
       );
@@ -162,12 +137,7 @@ export const useChatStore = create((set, get) => ({
     } catch (error) {
       // Remove optimistic message on error
       set({ messages: messages });
-      if (error.response?.status === 401) {
-        console.log("Authentication failed - user needs to re-login");
-        useAuthStore.getState().logout();
-      } else {
-        toast.error(error.response?.data?.message || "Failed to send message");
-      }
+      console.log("Error sending message:", error);
     }
   },
 }));
