@@ -8,16 +8,10 @@ import PageLoader from "./components/PageLoader";
 import { Toaster } from "react-hot-toast";
 
 function App() {
-  const { checkAuth, isCheckingAuth, authUser, stopTokenRefresh } =
-    useAuthStore();
+  const { checkAuth, isCheckingAuth, authUser } = useAuthStore();
 
   useEffect(() => {
     checkAuth();
-
-    // Cleanup token refresh on unmount
-    return () => {
-      stopTokenRefresh();
-    };
   }, []);
 
   if (isCheckingAuth) return <PageLoader />;
