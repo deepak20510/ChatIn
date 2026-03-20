@@ -349,4 +349,4 @@ This project is licensed under the ISC License.
 
 ---
 
-<p align="center">Made with ❤️ and ☕</p>
+Designed and Developed with ❤️ by **Deepak**.
