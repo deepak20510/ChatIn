@@ -48,6 +48,10 @@ export const useChatStore = create((set, get) => ({
 
       if (!isRelevant) return;
 
+      // Prevent duplicate messages if already present (solves duplicate render bugs)
+      const isDuplicate = messages.some((msg) => msg._id === newMessage._id);
+      if (isDuplicate) return;
+
       set({ messages: [...messages, newMessage] });
 
       // Play notification sound only for incoming messages
@@ -152,15 +156,17 @@ export const useChatStore = create((set, get) => ({
         `/messages/send/${selectedUser._id}`,
         messageData
       );
-      // Replace the optimistic message with the real one from the server
-      set({
-        messages: withOptimistic.map((msg) =>
+      // Safely replace the optimistic message using the LATEST state to avoid obliterating incoming socket messages
+      set((state) => ({
+        messages: state.messages.map((msg) =>
           msg._id === tempId ? res.data : msg
         ),
-      });
+      }));
     } catch (error) {
-      // Roll back optimistic update
-      set({ messages });
+      // Roll back specifically the temp message using functional state 
+      set((state) => ({ 
+        messages: state.messages.filter((msg) => msg._id !== tempId)
+      }));
       const errorMsg =
         error.response?.data?.message || "Failed to send message";
       toast.error(errorMsg);
