@@ -21,5 +21,17 @@ export default defineConfig({
   },
   // Ensure public directory is properly served
   publicDir: 'public',
-  base: '/'
+  base: '/',
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true
+      },
+      '/socket.io': {
+        target: 'http://localhost:3000',
+        ws: true
+      }
+    }
+  }
 })
