@@ -9,14 +9,25 @@ export const useChatStore = create((set, get) => ({
   messages: [],
   activeTab: "chats",
   selectedUser: null,
-  isUserLoading: false,
+  // FIX: was "isUserLoading" (singular) — ChatList/ContactList read "isUsersLoading"
+  isUsersLoading: false,
   isMessagesLoading: false,
-  isSoundEnabled: JSON.parse(localStorage.getItem("isSoundEnabled")) === true,
+  // FIX: use JSON.parse with a fallback to handle null from localStorage
+  isSoundEnabled: (() => {
+    try {
+      return JSON.parse(localStorage.getItem("isSoundEnabled")) === true;
+    } catch {
+      return false;
+    }
+  })(),
 
   toggleSound: () => {
-    localStorage.setItem("isSoundEnabled", !get().isSoundEnabled);
-    set({ isSoundEnabled: !get().isSoundEnabled });
+    const next = !get().isSoundEnabled;
+    // FIX: was missing JSON.stringify — stored "true"/"false" strings, not booleans
+    localStorage.setItem("isSoundEnabled", JSON.stringify(next));
+    set({ isSoundEnabled: next });
   },
+
   setActiveTab: (tab) => set({ activeTab: tab }),
   setSelectedUser: (user) => set({ selectedUser: user }),
 
@@ -26,29 +37,33 @@ export const useChatStore = create((set, get) => ({
 
     if (!socket || !selectedUser) return;
 
-    // Listen for new messages
     socket.on("newMessage", (newMessage) => {
-      const { selectedUser, messages, isSoundEnabled } = get();
-      // Only add the message if it's from/to the currently selected user
-      if (
-        newMessage.senderId === selectedUser._id.toString() ||
-        newMessage.receiverId === selectedUser._id.toString()
-      ) {
-        set({ messages: [...messages, newMessage] });
+      const { selectedUser: currentUser, messages, isSoundEnabled } = get();
+      if (!currentUser) return;
 
-        // Play notification sound if message is from the other user
-        if (
-          authUser &&
-          newMessage.senderId !== authUser._id.toString() &&
-          isSoundEnabled
-        ) {
-          try {
-            const audio = new Audio("/sounds/notification.mp3");
-            audio.volume = 1;
-            audio.play();
-          } catch (err) {
-            console.log("Error playing notification sound:", err);
-          }
+      // Only add to the view if it belongs to the active conversation
+      const isRelevant =
+        newMessage.senderId === currentUser._id.toString() ||
+        newMessage.receiverId === currentUser._id.toString();
+
+      if (!isRelevant) return;
+
+      set({ messages: [...messages, newMessage] });
+
+      // Play notification sound only for incoming messages
+      if (
+        authUser &&
+        newMessage.senderId !== authUser._id.toString() &&
+        isSoundEnabled
+      ) {
+        try {
+          const audio = new Audio("/sounds/notification.mp3");
+          audio.volume = 1;
+          audio.play().catch(() => {
+            // Browser may block autoplay — silently ignore
+          });
+        } catch {
+          // Ignore audio errors
         }
       }
     });
@@ -69,12 +84,14 @@ export const useChatStore = create((set, get) => ({
       const res = await axiosInstance.get("/messages/contacts");
       set({ allContacts: res.data });
     } catch (error) {
-      console.log("Error fetching contacts:", error);
-      // Silently handle errors - don't show toast for auth errors
+      if (error.response?.status !== 401) {
+        toast.error("Failed to load contacts");
+      }
     } finally {
       set({ isUsersLoading: false });
     }
   },
+
   getMyChatPartners: async () => {
     const { authUser } = useAuthStore.getState();
     if (!authUser) return;
@@ -84,12 +101,14 @@ export const useChatStore = create((set, get) => ({
       const res = await axiosInstance.get("/messages/chats");
       set({ chats: res.data });
     } catch (error) {
-      console.log("Error fetching chats:", error);
-      // Silently handle errors - don't show toast for auth errors
+      if (error.response?.status !== 401) {
+        toast.error("Failed to load chats");
+      }
     } finally {
       set({ isUsersLoading: false });
     }
   },
+
   getMessagesByUserId: async (userId) => {
     const { authUser } = useAuthStore.getState();
     if (!authUser) return;
@@ -99,18 +118,21 @@ export const useChatStore = create((set, get) => ({
       const res = await axiosInstance.get(`/messages/${userId}`);
       set({ messages: res.data });
     } catch (error) {
-      console.log("Error fetching messages:", error);
-      // Silently handle errors - don't show toast for auth errors
+      if (error.response?.status !== 401) {
+        toast.error("Failed to load messages");
+      }
     } finally {
       set({ isMessagesLoading: false });
     }
   },
+
   sendMessage: async (messageData) => {
     const { selectedUser, messages } = get();
     const { authUser } = useAuthStore.getState();
-    
+
     if (!authUser || !selectedUser) return;
 
+    // Optimistic update — show the message immediately in the UI
     const tempId = `temp-${Date.now()}`;
     const optimisticMessage = {
       _id: tempId,
@@ -121,23 +143,27 @@ export const useChatStore = create((set, get) => ({
       createdAt: new Date().toISOString(),
       isOptimistic: true,
     };
-    
-    const messagesWithOptimistic = [...messages, optimisticMessage];
-    set({ messages: messagesWithOptimistic });
-    
+
+    const withOptimistic = [...messages, optimisticMessage];
+    set({ messages: withOptimistic });
+
     try {
       const res = await axiosInstance.post(
         `/messages/send/${selectedUser._id}`,
-        messageData,
+        messageData
       );
-      const updatedMessages = messagesWithOptimistic.map((msg) =>
-        msg._id === tempId ? res.data : msg,
-      );
-      set({ messages: updatedMessages });
+      // Replace the optimistic message with the real one from the server
+      set({
+        messages: withOptimistic.map((msg) =>
+          msg._id === tempId ? res.data : msg
+        ),
+      });
     } catch (error) {
-      // Remove optimistic message on error
-      set({ messages: messages });
-      console.log("Error sending message:", error);
+      // Roll back optimistic update
+      set({ messages });
+      const errorMsg =
+        error.response?.data?.message || "Failed to send message";
+      toast.error(errorMsg);
     }
   },
 }));

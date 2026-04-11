@@ -3,8 +3,6 @@ import { LogOutIcon, VolumeOffIcon, Volume2Icon } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore.js";
 import { useChatStore } from "../store/useChatStore.js";
 
-const mouseClickSound = new Audio("/sounds/mouse-click.mp3");
-
 function ProfileHeader() {
   const { logout, authUser, updateProfile } = useAuthStore();
   const { isSoundEnabled, toggleSound } = useChatStore();
@@ -26,6 +24,22 @@ function ProfileHeader() {
     };
   };
 
+  const handleSoundToggle = () => {
+    // FIX: Create Audio lazily inside the click handler (not at module level).
+    // Module-level Audio() creation can fail in strict browser environments and
+    // blocks the initial parse of the module before any user gesture has occurred.
+    try {
+      const mouseClickSound = new Audio("/sounds/mouse-click.mp3");
+      mouseClickSound.currentTime = 0;
+      mouseClickSound.play().catch(() => {
+        // Browser may block autoplay in some contexts — silently ignore
+      });
+    } catch {
+      // Audio not supported — ignore
+    }
+    toggleSound();
+  };
+
   return (
     <div className="p-6 lg:p-8 border-b border-slate-700/50 bg-slate-800/30">
       <div className="flex items-center justify-between">
@@ -34,11 +48,12 @@ function ProfileHeader() {
           <div className="avatar online">
             <button
               className="size-14 lg:size-16 rounded-full overflow-hidden relative group ring-2 ring-slate-700/50 hover:ring-cyan-500/50 transition-all duration-300"
-              onClick={() => fileInputRef.current.click()}
+              onClick={() => fileInputRef.current?.click()}
+              type="button"
             >
               {" "}
               <img
-                src={selectedImg || authUser.profilePic || "/avatar.png"}
+                src={selectedImg || authUser?.profilePic || "/avatar.png"}
                 alt="User Image"
                 className="size-full object-cover"
               />
@@ -57,7 +72,7 @@ function ProfileHeader() {
           {/*USERNAME*/}
           <div>
             <h3 className="text-slate-100 font-semibold text-base lg:text-lg max-w-[180px] lg:max-w-[200px] truncate">
-              {authUser.fullName}
+              {authUser?.fullName}
             </h3>
             <p className="text-cyan-400/80 text-xs lg:text-sm flex items-center gap-1.5">
               <span className="w-2 h-2 bg-green-500 rounded-full inline-block"></span>
@@ -70,14 +85,8 @@ function ProfileHeader() {
           {/* SOUND TOGGLE BTN */}
           <button
             className="p-2.5 rounded-xl bg-slate-700/30 text-slate-400 hover:text-cyan-400 hover:bg-slate-700/50 transition-all duration-200"
-            onClick={() => {
-              // play click sound before toggling
-              mouseClickSound.currentTime = 0; // reset to start
-              mouseClickSound
-                .play()
-                .catch((error) => console.log("Audio play failed:", error));
-              toggleSound();
-            }}
+            onClick={handleSoundToggle}
+            type="button"
             title={isSoundEnabled ? "Mute sounds" : "Enable sounds"}
           >
             {isSoundEnabled ? (
@@ -91,6 +100,7 @@ function ProfileHeader() {
           <button
             className="p-2.5 rounded-xl bg-slate-700/30 text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
             onClick={logout}
+            type="button"
             title="Logout"
           >
             <LogOutIcon className="size-5" />

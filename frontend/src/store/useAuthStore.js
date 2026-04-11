@@ -18,9 +18,8 @@ export const useAuthStore = create((set, get) => ({
       const res = await axiosInstance.get("/auth/check");
       set({ authUser: res.data });
       get().connectSocket();
-    } catch (error) {
-      console.log("Error in authCheck:", error);
-      // Silently handle auth errors - don't show to user
+    } catch {
+      // 401 = not logged in (expected). Silently clear auth.
       set({ authUser: null });
     } finally {
       set({ isCheckingAuth: false });
@@ -32,14 +31,12 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await axiosInstance.post("/auth/signup", data);
       set({ authUser: res.data });
-
       toast.success("Account created successfully!");
       get().connectSocket();
     } catch (error) {
       const errorMsg =
         error.response?.data?.message || error.message || "Signup failed";
       toast.error(errorMsg);
-      console.error("Signup error:", error);
     } finally {
       set({ isSigningUp: false });
     }
@@ -53,9 +50,8 @@ export const useAuthStore = create((set, get) => ({
       toast.success("Logged in successfully");
       get().connectSocket();
     } catch (error) {
-      console.error("Login error:", error);
-      // Show user-friendly error message
-      const errorMsg = error.response?.data?.message || "Login failed. Please try again.";
+      const errorMsg =
+        error.response?.data?.message || "Login failed. Please try again.";
       toast.error(errorMsg);
     } finally {
       set({ isLoggingIn: false });
@@ -65,15 +61,12 @@ export const useAuthStore = create((set, get) => ({
   logout: async () => {
     try {
       await axiosInstance.post("/auth/logout");
-      set({ authUser: null });
+    } catch {
+      // Even if the server request fails, force logout on the client side
+    } finally {
+      get().disconnectSocket();
+      set({ authUser: null, onlineUsers: [] });
       toast.success("Logged out successfully");
-      get().disconnectSocket();
-    } catch (error) {
-      toast.error("Error logging out");
-      console.log("Logout error:", error);
-      // Force logout even if request fails
-      set({ authUser: null });
-      get().disconnectSocket();
     }
   },
 
@@ -89,17 +82,11 @@ export const useAuthStore = create((set, get) => ({
       set({ authUser: res.data });
       toast.success("Profile updated successfully");
     } catch (error) {
-      if (error.response?.status === 401) {
-        console.log("Authentication failed - user needs to re-login");
-        set({ authUser: null });
-      } else {
-        const errorMsg =
-          error.response?.data?.message ||
-          error.message ||
-          "Profile update failed";
-        console.log("Error in update profile:", error);
-        toast.error(errorMsg);
-      }
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Profile update failed";
+      toast.error(errorMsg);
     }
   },
 
@@ -107,32 +94,40 @@ export const useAuthStore = create((set, get) => ({
     const { authUser } = get();
     if (!authUser || get().socket?.connected) return;
 
-    try {
-      const socket = io(SOCKET_URL, {
-        withCredentials: true,
-        transports: ['websocket', 'polling'], // Add fallback transport
-        timeout: 20000, // Add timeout
-      });
+    const socket = io(SOCKET_URL, {
+      withCredentials: true,
+      transports: ["websocket", "polling"],
+      timeout: 20000,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
 
-      socket.connect();
-      set({ socket });
+    set({ socket });
 
-      // listen for online users event
-      socket.on("getOnlineUsers", (userIds) => {
-        set({ onlineUsers: userIds });
-      });
+    socket.on("getOnlineUsers", (userIds) => {
+      set({ onlineUsers: userIds });
+    });
 
-      // Handle connection errors
-      socket.on("connect_error", (error) => {
-        console.log("Socket connection error:", error.message);
-      });
+    socket.on("connect_error", (error) => {
+      console.warn("Socket connection error:", error.message);
+    });
 
-    } catch (error) {
-      console.log("Socket initialization error:", error);
-    }
+    socket.on("disconnect", (reason) => {
+      console.warn("Socket disconnected:", reason);
+      // Update online users to empty since we lost the socket
+      if (reason === "io server disconnect") {
+        // Server forced disconnect (e.g. invalid token) — don't auto-reconnect
+        set({ onlineUsers: [] });
+      }
+    });
   },
 
   disconnectSocket: () => {
-    if (get().socket?.connected) get().socket.disconnect();
+    const socket = get().socket;
+    if (socket) {
+      socket.disconnect();
+      set({ socket: null });
+    }
   },
 }));
