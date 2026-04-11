@@ -6,6 +6,15 @@ export const axiosInstance = axios.create({
   timeout: 15000, 
 });
 
+// ─── Request interceptor ─────────────────────────────────────────────────────
+axiosInstance.interceptors.request.use((config) => {
+  const token = localStorage.getItem("chat-token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // ─── Response interceptor ────────────────────────────────────────────────────
 axiosInstance.interceptors.response.use(
   // Success — pass through

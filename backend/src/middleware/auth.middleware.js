@@ -8,7 +8,13 @@ export const protectRoute = async (req, res, next) => {
     // Debugging: log incoming cookies in protected routes
     console.log(`[AUTH-DEBUG] check route: ${req.originalUrl}, Cookies:`, Object.keys(req.cookies));
 
-    const token = req.cookies.jwt;
+    // Support both HttpOnly cookie OR Bearer token strategies dynamically to circumvent browser blockers
+    let token = req.cookies.jwt;
+    if (!token && req.headers.authorization?.startsWith("Bearer ")) {
+      token = req.headers.authorization.split(" ")[1];
+      console.log(`[AUTH-DEBUG] Falling back to Bearer token from header`);
+    }
+
     console.log(`[AUTH-DEBUG] Parsed JWT Token present:`, !!token);
 
     if (!token) {

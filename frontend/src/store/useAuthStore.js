@@ -17,9 +17,11 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await axiosInstance.get("/auth/check");
       set({ authUser: res.data });
+      if (res.data.token) localStorage.setItem("chat-token", res.data.token);
       get().connectSocket();
     } catch {
       // 401 = not logged in (expected). Silently clear auth.
+      localStorage.removeItem("chat-token");
       set({ authUser: null });
     } finally {
       set({ isCheckingAuth: false });
@@ -31,6 +33,7 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await axiosInstance.post("/auth/signup", data);
       set({ authUser: res.data });
+      if (res.data.token) localStorage.setItem("chat-token", res.data.token);
       toast.success("Account created successfully!");
       get().connectSocket();
     } catch (error) {
@@ -47,6 +50,7 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await axiosInstance.post("/auth/login", data);
       set({ authUser: res.data });
+      if (res.data.token) localStorage.setItem("chat-token", res.data.token);
       toast.success("Logged in successfully");
       get().connectSocket();
     } catch (error) {
@@ -64,6 +68,7 @@ export const useAuthStore = create((set, get) => ({
     } catch {
       // Even if the server request fails, force logout on the client side
     } finally {
+      localStorage.removeItem("chat-token");
       get().disconnectSocket();
       set({ authUser: null, onlineUsers: [] });
       toast.success("Logged out successfully");
@@ -94,8 +99,10 @@ export const useAuthStore = create((set, get) => ({
     const { authUser } = get();
     if (!authUser || get().socket?.connected) return;
 
+    const token = localStorage.getItem("chat-token") || authUser.token;
+
     const socket = io(SOCKET_URL, {
-      auth: { token: authUser.token }, // Pass token directly from state
+      auth: { token }, // Pass token directly from state
       withCredentials: true,
       transports: ["websocket", "polling"],
       timeout: 20000,
