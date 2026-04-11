@@ -1,13 +1,9 @@
 import axios from "axios";
 
-// Default to empty string so requests hit the origin directly,
-// which enables Vite (local) and Vercel (production) proxies to intercept them.
-const apiUrl = import.meta.env.VITE_API_URL === "http://localhost:3000" ? "" : (import.meta.env.VITE_API_URL || "");
-
 export const axiosInstance = axios.create({
-  baseURL: apiUrl + "/api",
+  baseURL: (import.meta.env.VITE_API_URL || "http://localhost:3000") + "/api",
   withCredentials: true,
-  timeout: 15000, // 15 second request timeout
+  timeout: 15000, 
 });
 
 // ─── Response interceptor ────────────────────────────────────────────────────

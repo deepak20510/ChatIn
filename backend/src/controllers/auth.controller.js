@@ -35,13 +35,14 @@ export const signup = async (req, res) => {
     const newUser = new User({ fullName, email, password: hashedPassword });
     const savedUser = await newUser.save();
 
-    generateToken(savedUser._id, res);
+    const token = generateToken(savedUser._id, res);
 
     res.status(201).json({
       _id: savedUser._id,
       fullName: savedUser.fullName,
       email: savedUser.email,
       profilePic: savedUser.profilePic,
+      token, // Explicitly pass token
     });
 
     // Send welcome email asynchronously — errors here should NOT affect the response
@@ -74,13 +75,14 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: "Invalid Credentials" });
     }
 
-    generateToken(user._id, res);
+    const token = generateToken(user._id, res);
 
     res.status(200).json({
       _id: user._id,
       fullName: user.fullName,
       email: user.email,
       profilePic: user.profilePic,
+      token, // Explictly pass token so frontend can use it config socket.io auth
     });
   } catch (error) {
     console.error("Error in login controller:", error.message);

@@ -32,8 +32,12 @@ router.get("/test-cookies", (req, res) => {
 });
 
 router.put("/update-profile", protectRoute, updateProfile);
-router.get("/check", protectRoute, (req, res) =>
-  res.status(200).json(req.user),
-);
+router.get("/check", protectRoute, (req, res) => {
+  const token = req.cookies.jwt;
+  res.status(200).json({
+    ...req.user.toObject(),
+    token // Ensure token is handed back for socket authentication handling
+  });
+});
 
 export default router;

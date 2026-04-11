@@ -4,17 +4,17 @@ import { ENV } from "../lib/env.js";
 
 export const socketAuthMiddleware = async (socket, next) => {
   try {
-    // Safely parse the jwt cookie from the handshake cookie header.
-    // We split only on the FIRST "=" so that base64 "=" padding inside
-    // the JWT value is preserved correctly.
-    const rawCookie = socket.handshake.headers.cookie || "";
-    const jwtCookie = rawCookie
-      .split("; ")
-      .find((row) => row.startsWith("jwt="));
+    // Safely parse token from explicitly passed auth object (preferred) OR fallback to cookie
+    let token = socket.handshake.auth?.token;
+    
+    if (!token) {
+      const rawCookie = socket.handshake.headers.cookie || "";
+      const jwtCookie = rawCookie
+        .split("; ")
+        .find((row) => row.startsWith("jwt="));
 
-    const token = jwtCookie
-      ? jwtCookie.slice("jwt=".length) // take everything after "jwt="
-      : null;
+      token = jwtCookie ? jwtCookie.slice("jwt=".length) : null;
+    }
 
     if (!token) {
       return next(new Error("Unauthorized - No token provided"));

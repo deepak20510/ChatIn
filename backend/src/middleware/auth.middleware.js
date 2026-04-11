@@ -5,7 +5,11 @@ import { slideTokenCookie } from "../lib/utils.js";
 
 export const protectRoute = async (req, res, next) => {
   try {
+    // Debugging: log incoming cookies in protected routes
+    console.log(`[AUTH-DEBUG] check route: ${req.originalUrl}, Cookies:`, Object.keys(req.cookies));
+
     const token = req.cookies.jwt;
+    console.log(`[AUTH-DEBUG] Parsed JWT Token present:`, !!token);
 
     if (!token) {
       return res

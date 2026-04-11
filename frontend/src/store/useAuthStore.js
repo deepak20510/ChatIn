@@ -95,6 +95,7 @@ export const useAuthStore = create((set, get) => ({
     if (!authUser || get().socket?.connected) return;
 
     const socket = io(SOCKET_URL, {
+      auth: { token: authUser.token }, // Pass token directly from state
       withCredentials: true,
       transports: ["websocket", "polling"],
       timeout: 20000,

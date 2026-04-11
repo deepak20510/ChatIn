@@ -12,14 +12,10 @@ const TOKEN_EXPIRY = "365d";
  * Kept in one place so generateToken and refreshTokenCookie are consistent.
  */
 function buildCookieOptions() {
-  // If deployed (CLIENT_URL starts with https), force secure and SameSite=none 
-  // so cross-domain cookies work between Vercel and Render even if NODE_ENV isn't explicitly set.
-  const isProduction = ENV.NODE_ENV === "production" || (ENV.CLIENT_URL && ENV.CLIENT_URL.startsWith("https://"));
-  
   return {
     httpOnly: true,
-    secure: !!isProduction,
-    sameSite: isProduction ? "none" : "lax",
+    secure: true, // Always true for HTTPS compatibility
+    sameSite: "none", // Must be "none" for cross-site cookies
     path: "/",
     maxAge: TOKEN_MAX_AGE_MS,
   };
