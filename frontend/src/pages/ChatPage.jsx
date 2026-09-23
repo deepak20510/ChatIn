@@ -5,19 +5,24 @@ import ProfileHeader from "../components/ProfileHeader";
 import ActiveTabSwitch from "../components/ActiveTabSwitch";
 import ChatList from "../components/ChatList";
 import ContactList from "../components/ContactList";
+import RoomList from "../components/RoomList";
 import ChatContainer from "../components/ChatContainer";
 import NoConversationPlaceholder from "../components/NoConversationPlaceholder";
 
 function ChatPage() {
-  const { activeTab, selectedUser, setSelectedUser } = useChatStore();
+  const { activeTab, selectedUser, selectedRoom, clearSelectedConversation } =
+    useChatStore();
+
+  const isConversationActive = Boolean(selectedUser || selectedRoom);
 
   useEffect(() => {
     const handleEscKey = (event) => {
-      if (event.key === "Escape") setSelectedUser(null);
+      if (event.key === "Escape") clearSelectedConversation();
     };
     window.addEventListener("keydown", handleEscKey);
     return () => window.removeEventListener("keydown", handleEscKey);
-  }, [setSelectedUser]);
+  }, [clearSelectedConversation]);
+
   return (
     <div className="relative w-full h-[calc(100vh-2rem)] max-h-[900px] lg:max-w-7xl lg:mx-auto lg:h-[85vh] lg:max-h-[850px]">
       <BorderAnimatedContainer>
@@ -28,17 +33,23 @@ function ChatPage() {
             <ActiveTabSwitch />
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {activeTab === "chats" ? <ChatList /> : <ContactList />}
+            {activeTab === "chats" && <ChatList />}
+            {activeTab === "rooms" && <RoomList />}
+            {activeTab === "contacts" && <ContactList />}
           </div>
         </div>
 
         {/* RIGHT SIDE - Chat Area */}
         <div className="flex-1 flex-col bg-slate-900/30 backdrop-blur-sm hidden md:flex relative">
-          {selectedUser ? <ChatContainer /> : <NoConversationPlaceholder />}
+          {isConversationActive ? (
+            <ChatContainer />
+          ) : (
+            <NoConversationPlaceholder />
+          )}
         </div>
 
         {/* MOBILE CHAT OVERLAY */}
-        {selectedUser && (
+        {isConversationActive && (
           <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-sm md:hidden z-50 flex flex-col">
             <ChatContainer />
           </div>

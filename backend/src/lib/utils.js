@@ -1,29 +1,40 @@
 import jwt from "jsonwebtoken";
 import { ENV } from "./env.js";
 
-// Token lives for 365 days. As long as the user is active, the sliding
-// window in auth.middleware.js will keep re-setting the cookie maxAge, so
-// they will never get logged out while using the app.
-const TOKEN_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000; // 365 days in ms
-const TOKEN_EXPIRY = "365d";
+// Non-expiring persistent sessions (10 years)
+const TOKEN_MAX_AGE_MS = 10 * 365 * 24 * 60 * 60 * 1000; // 10 years in ms
+const TOKEN_EXPIRY = "3650d";
 
 /**
  * Build the cookie options object based on the current environment.
- * Kept in one place so generateToken and refreshTokenCookie are consistent.
  */
-function buildCookieOptions() {
+export function buildCookieOptions() {
+  const isProduction = ENV.NODE_ENV === "production";
   return {
     httpOnly: true,
-    secure: true, // Always true for HTTPS compatibility
-    sameSite: "none", // Must be "none" for cross-site cookies
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
     path: "/",
     maxAge: TOKEN_MAX_AGE_MS,
   };
 }
 
 /**
- * Sign a NEW token for userId and set it as an httpOnly cookie.
- * Called on signup / login.
+ * Standard cookie clear options matching buildCookieOptions flags
+ */
+export function clearCookieOptions() {
+  const isProduction = ENV.NODE_ENV === "production";
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    path: "/",
+  };
+}
+
+/**
+ * Sign a NEW persistent token for userId and set it as an httpOnly cookie.
+ * Non-expirable session.
  */
 export const generateToken = (userId, res) => {
   const { JWT_SECRET } = ENV;
@@ -34,17 +45,18 @@ export const generateToken = (userId, res) => {
 
   const token = jwt.sign({ userId }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
 
-  res.cookie("jwt", token, buildCookieOptions());
+  if (res && !res.headersSent) {
+    res.cookie("jwt", token, buildCookieOptions());
+  }
 
   return token;
 };
 
 /**
- * Sliding-window refresh: re-set the SAME token string in the cookie with a
- * fresh maxAge. This does NOT re-sign the token (no DB hit, no extra CPU),
- * it just keeps the cookie alive as long as the user is active.
- * Called from auth.middleware.js on every authenticated request.
+ * Sliding-window refresh: re-set the token in the cookie with fresh maxAge.
  */
 export const slideTokenCookie = (token, res) => {
-  res.cookie("jwt", token, buildCookieOptions());
+  if (res && !res.headersSent) {
+    res.cookie("jwt", token, buildCookieOptions());
+  }
 };

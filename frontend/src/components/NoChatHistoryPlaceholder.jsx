@@ -1,6 +1,19 @@
-import { MessageCircleIcon, Send } from "lucide-react";
+import { MessageCircleIcon } from "lucide-react";
+import { useChatStore } from "../store/useChatStore";
+
+const QUICK_MESSAGES = [
+  { emoji: "👋", text: "Hey there!" },
+  { emoji: "🤝", text: "How are you?" },
+  { emoji: "📅", text: "Let's meet up soon?" },
+];
 
 const NoChatHistoryPlaceholder = ({ name }) => {
+  const { sendMessage } = useChatStore();
+
+  const handleQuickSend = async (text) => {
+    await sendMessage({ text, image: null });
+  };
+
   return (
     <div className="flex flex-col items-center justify-center h-full text-center p-8 lg:p-12">
       <div className="w-20 h-20 lg:w-24 lg:h-24 bg-gradient-to-br from-cyan-500/20 to-pink-500/10 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-cyan-500/10">
@@ -15,18 +28,18 @@ const NoChatHistoryPlaceholder = ({ name }) => {
           This is the beginning of your conversation. Send a message to start
           chatting!
         </p>
-        <div className="h-px w-48 bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent mx-auto"></div>
+        <div className="h-px w-48 bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent mx-auto" />
       </div>
       <div className="flex flex-wrap gap-3 justify-center">
-        <button className="px-5 py-2.5 text-sm font-medium text-cyan-400 bg-cyan-500/10 rounded-xl hover:bg-cyan-500/20 transition-all border border-cyan-500/20 flex items-center gap-2">
-          <span>👋</span> Say Hello
-        </button>
-        <button className="px-5 py-2.5 text-sm font-medium text-cyan-400 bg-cyan-500/10 rounded-xl hover:bg-cyan-500/20 transition-all border border-cyan-500/20 flex items-center gap-2">
-          <span>🤝</span> How are you?
-        </button>
-        <button className="px-5 py-2.5 text-sm font-medium text-cyan-400 bg-cyan-500/10 rounded-xl hover:bg-cyan-500/20 transition-all border border-cyan-500/20 flex items-center gap-2">
-          <span>📅</span> Meet up soon?
-        </button>
+        {QUICK_MESSAGES.map(({ emoji, text }) => (
+          <button
+            key={text}
+            onClick={() => handleQuickSend(`${emoji} ${text}`)}
+            className="px-5 py-2.5 text-sm font-medium text-cyan-400 bg-cyan-500/10 rounded-xl hover:bg-cyan-500/20 active:scale-95 transition-all border border-cyan-500/20 flex items-center gap-2"
+          >
+            <span>{emoji}</span> {text}
+          </button>
+        ))}
       </div>
     </div>
   );

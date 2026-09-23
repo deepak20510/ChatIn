@@ -14,7 +14,8 @@ function App() {
   useEffect(() => {
     // Simple check - don't worry about cookies, just handle errors gracefully
     checkAuth();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount — checkAuth is a stable Zustand action
 
   if (isCheckingAuth) return <PageLoader />;
 

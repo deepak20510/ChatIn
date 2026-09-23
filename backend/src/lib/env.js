@@ -3,9 +3,9 @@ import "dotenv/config";
 export const ENV = {
   PORT: process.env.PORT || 3000,
   MONGO_URI: process.env.MONGO_URI,
-  JWT_SECRET: process.env.JWT_SECRET,
+  JWT_SECRET: process.env.JWT_SECRET || (process.env.NODE_ENV === "production" ? undefined : "chatin_default_dev_jwt_secret_key_super_secure_2026"),
   NODE_ENV: process.env.NODE_ENV || "development",
-  CLIENT_URL: process.env.CLIENT_URL,
+  CLIENT_URL: process.env.CLIENT_URL || "http://localhost:5173",
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   EMAIL_FROM: process.env.EMAIL_FROM,
   EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME,
@@ -16,7 +16,7 @@ export const ENV = {
   ARCJET_ENV: process.env.ARCJET_ENV,
 };
 
-// Validate critical environment variables
+// Validate critical environment variables in production
 if (!ENV.JWT_SECRET) {
   console.error("❌ CRITICAL: JWT_SECRET is not set!");
   console.error("📖 Please follow these steps:");
@@ -26,7 +26,6 @@ if (!ENV.JWT_SECRET) {
   console.error("   2. Create backend/.env file");
   console.error("   3. Add: JWT_SECRET=your_generated_secret");
   console.error("   4. Restart the server");
-  console.error("📚 For more help, see JWT_SETUP_GUIDE.md");
   process.exit(1);
 }
 

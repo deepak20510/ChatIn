@@ -4,15 +4,14 @@ import { ENV } from "../lib/env.js";
 
 export const socketAuthMiddleware = async (socket, next) => {
   try {
-    // Safely parse token from explicitly passed auth object (preferred) OR fallback to cookie
+    // Prefer explicit auth token, fall back to cookie
     let token = socket.handshake.auth?.token;
-    
+
     if (!token) {
       const rawCookie = socket.handshake.headers.cookie || "";
       const jwtCookie = rawCookie
         .split("; ")
         .find((row) => row.startsWith("jwt="));
-
       token = jwtCookie ? jwtCookie.slice("jwt=".length) : null;
     }
 
@@ -22,16 +21,13 @@ export const socketAuthMiddleware = async (socket, next) => {
 
     const decoded = jwt.verify(token, ENV.JWT_SECRET);
 
-    const user = await User.findById(decoded.userId).select("-password");
+    const user = await User.findById(decoded.userId).select("-password").lean();
     if (!user) {
-      return next(new Error("User not found"));
+      return next(new Error("Unauthorized - User not found"));
     }
 
-    // Attach user info to socket
     socket.user = user;
     socket.userId = user._id.toString();
-
-    console.log(`Socket authenticated: ${user.fullName} (${socket.userId})`);
 
     next();
   } catch (error) {

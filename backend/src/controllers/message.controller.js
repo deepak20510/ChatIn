@@ -1,15 +1,22 @@
 import Message from "../models/Message.js";
 import User from "../models/User.js";
 import cloudinary from "../lib/cloudinary.js";
-import { io, getReceiverSocketId } from "../lib/socket.js";
+import { emitToUser } from "../lib/socket.js";
 import mongoose from "mongoose";
 
+/**
+ * Get all registered contacts (excluding current user) with lean execution
+ */
 export const getAllContacts = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
     const filteredUsers = await User.find({
       _id: { $ne: loggedInUserId },
-    }).select("-password");
+    })
+      .select("fullName email profilePic createdAt")
+      .sort({ fullName: 1 })
+      .lean();
+
     res.status(200).json(filteredUsers);
   } catch (error) {
     console.error("Error in getAllContacts:", error.message);
@@ -17,29 +24,59 @@ export const getAllContacts = async (req, res) => {
   }
 };
 
+/**
+ * Get messages between two users with pagination and lean query execution
+ */
 export const getMessagesByUserId = async (req, res) => {
   try {
     const myId = req.user._id;
     const { id: userToChatId } = req.params;
+    const { limit = 50, before } = req.query;
 
-    // Validate that userToChatId is a valid MongoDB ObjectId
     if (!mongoose.Types.ObjectId.isValid(userToChatId)) {
       return res.status(400).json({ message: "Invalid user ID" });
     }
 
-    const messages = await Message.find({
+    const partnerObjectId = new mongoose.Types.ObjectId(userToChatId);
+
+    const query = {
       $or: [
-        { senderId: myId, receiverId: userToChatId },
-        { senderId: userToChatId, receiverId: myId },
+        { senderId: myId, receiverId: partnerObjectId },
+        { senderId: partnerObjectId, receiverId: myId },
       ],
-    });
-    res.status(200).json(messages);
+      roomId: null, // Direct 1-on-1 private messages only
+    };
+
+    if (before) {
+      query.createdAt = { $lt: new Date(before) };
+    }
+
+    const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100);
+
+    // Fetch the most recent messages up to parsedLimit
+    const messages = await Message.find(query)
+      .sort({ createdAt: -1 })
+      .limit(parsedLimit)
+      .lean();
+
+    // Mark any unread messages from this partner to me as read
+    await Message.updateMany(
+      { senderId: partnerObjectId, receiverId: myId, isRead: false },
+      { $set: { isRead: true } }
+    );
+    emitToUser(userToChatId, "messagesRead", { readBy: myId });
+
+    // Reverse so the client receives messages in chronological order [oldest ... newest]
+    res.status(200).json(messages.reverse());
   } catch (error) {
     console.error("Error in getMessagesByUserId:", error.message);
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
+/**
+ * Send a 1-on-1 private message with multi-device real-time delivery
+ */
 export const sendMessage = async (req, res) => {
   try {
     const { text, image } = req.body;
@@ -50,12 +87,14 @@ export const sendMessage = async (req, res) => {
       return res.status(400).json({ message: "Text or image is required." });
     }
 
-    // Validate ObjectId BEFORE comparing (prevents crash on invalid ID)
+    if (text && text.length > 2000) {
+      return res.status(400).json({ message: "Message text cannot exceed 2000 characters." });
+    }
+
     if (!mongoose.Types.ObjectId.isValid(receiverId)) {
       return res.status(400).json({ message: "Invalid receiver ID" });
     }
 
-    // Use ObjectId comparison safely (both sides are ObjectIds)
     if (senderId.toString() === receiverId) {
       return res
         .status(400)
@@ -79,47 +118,83 @@ export const sendMessage = async (req, res) => {
     const newMessage = new Message({
       senderId,
       receiverId,
-      text,
+      text: text?.trim(),
       image: imageUrl,
+      isRead: false,
     });
 
     await newMessage.save();
 
-    // Emit the new message to the receiver in real-time
-    const receiverSocketId = getReceiverSocketId(receiverId);
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", newMessage);
-    }
+    const plainMessage = newMessage.toObject();
 
-    res.status(201).json(newMessage);
+    // Multi-device Socket.IO Real-time Delivery
+    // Emits to all active devices/tabs of the receiver
+    emitToUser(receiverId, "newMessage", plainMessage);
+
+    // Also notify other tabs of the sender
+    emitToUser(senderId, "messageSentSync", plainMessage);
+
+    res.status(201).json(plainMessage);
   } catch (error) {
     console.error("Error in sendMessage:", error.message);
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
+/**
+ * Optimized Aggregation Pipeline to retrieve chat partners sorted by recent activity
+ * Reduces memory usage and boosts response time by performing grouping in MongoDB engine
+ */
 export const getChatPartners = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
 
-    // Find all messages where the logged-in user is sender or receiver
-    const messages = await Message.find({
-      $or: [{ senderId: loggedInUserId }, { receiverId: loggedInUserId }],
-    }).select("senderId receiverId"); // Only fetch the fields we need
-
-    const chatPartnerIds = [
-      ...new Set(
-        messages.map((msg) =>
-          msg.senderId.toString() === loggedInUserId.toString()
-            ? msg.receiverId.toString()
-            : msg.senderId.toString()
-        )
-      ),
-    ];
-
-    const chatPartners = await User.find({
-      _id: { $in: chatPartnerIds },
-    }).select("-password");
+    const chatPartners = await Message.aggregate([
+      {
+        $match: {
+          $or: [{ senderId: loggedInUserId }, { receiverId: loggedInUserId }],
+          roomId: null, // 1-on-1 private conversations
+        },
+      },
+      {
+        $project: {
+          partnerId: {
+            $cond: {
+              if: { $eq: ["$senderId", loggedInUserId] },
+              then: "$receiverId",
+              else: "$senderId",
+            },
+          },
+          createdAt: 1,
+        },
+      },
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: "$partnerId",
+          lastMessageAt: { $first: "$createdAt" },
+        },
+      },
+      { $sort: { lastMessageAt: -1 } },
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "partnerDetails",
+        },
+      },
+      { $unwind: "$partnerDetails" },
+      {
+        $project: {
+          _id: "$partnerDetails._id",
+          fullName: "$partnerDetails.fullName",
+          email: "$partnerDetails.email",
+          profilePic: "$partnerDetails.profilePic",
+          lastMessageAt: 1,
+        },
+      },
+    ]);
 
     res.status(200).json(chatPartners);
   } catch (error) {

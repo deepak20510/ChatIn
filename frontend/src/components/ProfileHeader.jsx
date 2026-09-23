@@ -1,27 +1,43 @@
 import { useState, useRef } from "react";
-import { LogOutIcon, VolumeOffIcon, Volume2Icon } from "lucide-react";
+import { LogOutIcon, VolumeOffIcon, Volume2Icon, Loader2 } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore.js";
 import { useChatStore } from "../store/useChatStore.js";
+import { compressImage } from "../lib/imageCompressor.js";
+import toast from "react-hot-toast";
 
 function ProfileHeader() {
   const { logout, authUser, updateProfile } = useAuthStore();
   const { isSoundEnabled, toggleSound } = useChatStore();
   const [selectedImg, setSelectedImg] = useState(null);
-
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
 
-    reader.onloadend = async () => {
-      const base64Image = reader.result;
-      setSelectedImg(base64Image);
-      await updateProfile({ profilePic: base64Image });
-    };
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Profile picture must be smaller than 5MB");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const compressed = await compressImage(file, 800, 0.85); // Profile pics: smaller target
+      setSelectedImg(compressed);
+      await updateProfile({ profilePic: compressed });
+    } catch {
+      toast.error("Failed to process image. Please try again.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const handleSoundToggle = () => {
@@ -47,19 +63,26 @@ function ProfileHeader() {
           {/*AVATAR*/}
           <div className="avatar online">
             <button
-              className="size-14 lg:size-16 rounded-full overflow-hidden relative group ring-2 ring-slate-700/50 hover:ring-cyan-500/50 transition-all duration-300"
-              onClick={() => fileInputRef.current?.click()}
+              className="size-14 lg:size-16 rounded-full overflow-hidden relative group ring-2 ring-slate-700/50 hover:ring-cyan-500/50 transition-all duration-300 disabled:cursor-not-allowed"
+              onClick={() => !isUploading && fileInputRef.current?.click()}
               type="button"
+              disabled={isUploading}
+              title={isUploading ? "Uploading..." : "Change profile picture"}
             >
-              {" "}
               <img
                 src={selectedImg || authUser?.profilePic || "/avatar.png"}
                 alt="User Image"
-                className="size-full object-cover"
+                className={`size-full object-cover transition-opacity ${isUploading ? "opacity-40" : ""}`}
               />
-              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
-                <span className="text-white text-xs font-medium">Change</span>
-              </div>
+              {isUploading ? (
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                  <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
+                </div>
+              ) : (
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
+                  <span className="text-white text-xs font-medium">Change</span>
+                </div>
+              )}
             </button>
             <input
               type="file"

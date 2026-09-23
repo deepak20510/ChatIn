@@ -1,21 +1,15 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { ENV } from "../lib/env.js";
-import { slideTokenCookie } from "../lib/utils.js";
+import { slideTokenCookie, clearCookieOptions } from "../lib/utils.js";
 
 export const protectRoute = async (req, res, next) => {
   try {
-    // Debugging: log incoming cookies in protected routes
-    console.log(`[AUTH-DEBUG] check route: ${req.originalUrl}, Cookies:`, Object.keys(req.cookies));
-
-    // Support both HttpOnly cookie OR Bearer token strategies dynamically to circumvent browser blockers
-    let token = req.cookies.jwt;
+    // Support both HttpOnly cookie OR Bearer token strategies dynamically
+    let token = req.cookies?.jwt;
     if (!token && req.headers.authorization?.startsWith("Bearer ")) {
       token = req.headers.authorization.split(" ")[1];
-      console.log(`[AUTH-DEBUG] Falling back to Bearer token from header`);
     }
-
-    console.log(`[AUTH-DEBUG] Parsed JWT Token present:`, !!token);
 
     if (!token) {
       return res
@@ -23,21 +17,23 @@ export const protectRoute = async (req, res, next) => {
         .json({ message: "Unauthorized - No token provided" });
     }
 
-    // Throws JsonWebTokenError or TokenExpiredError on failure
     const decoded = jwt.verify(token, ENV.JWT_SECRET);
 
-    const user = await User.findById(decoded.userId).select("-password");
+    const user = await User.findById(decoded.userId).select("-password").lean();
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      // Clear cookie if user was deleted or no longer exists
+      res.clearCookie("jwt", clearCookieOptions());
+      return res.status(401).json({ message: "Unauthorized - User no longer exists" });
     }
 
-    // Sliding-window: re-set the cookie maxAge on every authenticated request
-    // so active users never get logged out. No re-signing needed.
+    // Keep session alive
     slideTokenCookie(token, res);
 
     req.user = user;
     next();
   } catch (error) {
+    res.clearCookie("jwt", clearCookieOptions());
+
     if (error.name === "TokenExpiredError") {
       return res
         .status(401)
@@ -51,6 +47,8 @@ export const protectRoute = async (req, res, next) => {
     }
 
     console.error("Auth middleware error:", error.message);
-    res.status(500).json({ message: "Internal server error" });
+    if (!res.headersSent) {
+      res.status(401).json({ message: "Unauthorized - Authentication failed" });
+    }
   }
 };

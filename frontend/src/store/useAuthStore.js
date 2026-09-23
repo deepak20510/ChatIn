@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { axiosInstance } from "../lib/axios";
+import { axiosInstance, setLogoutCallback } from "../lib/axios";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
 
@@ -16,11 +16,15 @@ export const useAuthStore = create((set, get) => ({
   checkAuth: async () => {
     try {
       const res = await axiosInstance.get("/auth/check");
-      set({ authUser: res.data });
-      if (res.data.token) localStorage.setItem("chat-token", res.data.token);
-      get().connectSocket();
+      if (res.data && res.data._id) {
+        set({ authUser: res.data });
+        if (res.data.token) localStorage.setItem("chat-token", res.data.token);
+        get().connectSocket();
+      } else {
+        localStorage.removeItem("chat-token");
+        set({ authUser: null });
+      }
     } catch {
-      // 401 = not logged in (expected). Silently clear auth.
       localStorage.removeItem("chat-token");
       set({ authUser: null });
     } finally {
@@ -55,7 +59,9 @@ export const useAuthStore = create((set, get) => ({
       get().connectSocket();
     } catch (error) {
       const errorMsg =
-        error.response?.data?.message || "Login failed. Please try again.";
+        error.userMessage ||
+        error.response?.data?.message ||
+        "Login failed. Please try again.";
       toast.error(errorMsg);
     } finally {
       set({ isLoggingIn: false });
@@ -139,3 +145,10 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 }));
+
+// Register the logout callback with axios so 401 responses auto-logout the user.
+// Done here (not inside the store) to avoid circular dep / dynamic import issues.
+setLogoutCallback(() => {
+  const { authUser, logout } = useAuthStore.getState();
+  if (authUser) logout();
+});
