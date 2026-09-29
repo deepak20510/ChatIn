@@ -3,7 +3,7 @@ import { generateToken, clearCookieOptions } from "../lib/utils.js";
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import { ENV } from "../lib/env.js";
-import cloudinary from "../lib/cloudinary.js";
+import { uploadImage } from "../lib/imageUploader.js";
 import mongoose from "mongoose";
 import { connectDB } from "../lib/db.js";
 
@@ -163,19 +163,17 @@ export const updateProfile = async (req, res) => {
 
     // Guard: reject base64 images that are too large (>4MB base64 = ~3MB actual)
     // Prevents Cloudinary bandwidth overrun and long upload times
-    const MAX_BASE64_SIZE = 4 * 1024 * 1024; // 4MB
+    const MAX_BASE64_SIZE = 10 * 1024 * 1024; // 10MB
     if (profilePic.length > MAX_BASE64_SIZE) {
-      return res.status(413).json({ message: "Profile picture must be smaller than 3MB. Please compress the image first." });
+      return res.status(413).json({ message: "Profile picture must be smaller than 10MB. Please compress the image first." });
     }
 
     const userId = req.user._id;
-    const uploadResponse = await cloudinary.uploader.upload(profilePic, {
-      folder: "chatin_avatars",
-    });
+    const imageUrl = await uploadImage(profilePic, "chatin_avatars");
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { profilePic: uploadResponse.secure_url },
+      { profilePic: imageUrl },
       { new: true }
     ).select("-password").lean();
 

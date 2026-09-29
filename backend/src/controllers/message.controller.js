@@ -1,6 +1,6 @@
 import Message from "../models/Message.js";
 import User from "../models/User.js";
-import cloudinary from "../lib/cloudinary.js";
+import { uploadImage } from "../lib/imageUploader.js";
 import { emitToUser } from "../lib/socket.js";
 import mongoose from "mongoose";
 
@@ -108,11 +108,7 @@ export const sendMessage = async (req, res) => {
 
     let imageUrl;
     if (image) {
-      const uploadResponse = await cloudinary.uploader.upload(image, {
-        resource_type: "image",
-        folder: "chatin_messages",
-      });
-      imageUrl = uploadResponse.secure_url;
+      imageUrl = await uploadImage(image, "chatin_messages");
     }
 
     const newMessage = new Message({

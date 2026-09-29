@@ -83,7 +83,18 @@ function MessageInput() {
     setIsCompressing(true);
     try {
       // Compress image client-side to protect Cloudinary quota and speed up upload
-      const compressed = await compressImage(file);
+      let compressed;
+      try {
+        compressed = await compressImage(file);
+      } catch (compErr) {
+        console.warn("Client compression failed, falling back to FileReader:", compErr);
+        compressed = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
       setImagePreview(compressed);
     } catch {
       toast.error("Failed to process image. Please try another file.");

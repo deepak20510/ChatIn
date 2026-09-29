@@ -1,7 +1,7 @@
 import Room from "../models/Room.js";
 import Message from "../models/Message.js";
 import User from "../models/User.js";
-import cloudinary from "../lib/cloudinary.js";
+import { uploadImage } from "../lib/imageUploader.js";
 import { io } from "../lib/socket.js";
 import mongoose from "mongoose";
 
@@ -196,11 +196,7 @@ export const sendRoomMessage = async (req, res) => {
 
     let imageUrl;
     if (image) {
-      const uploadResponse = await cloudinary.uploader.upload(image, {
-        resource_type: "image",
-        folder: "chatin_room_messages",
-      });
-      imageUrl = uploadResponse.secure_url;
+      imageUrl = await uploadImage(image, "chatin_room_messages");
     }
 
     const newMessage = new Message({

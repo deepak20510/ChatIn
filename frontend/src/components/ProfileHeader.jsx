@@ -29,9 +29,20 @@ function ProfileHeader() {
 
     setIsUploading(true);
     try {
-      const compressed = await compressImage(file, 800, 0.85); // Profile pics: smaller target
-      setSelectedImg(compressed);
-      await updateProfile({ profilePic: compressed });
+      let imageBase64;
+      try {
+        imageBase64 = await compressImage(file, 800, 0.85); // Profile pics: smaller target
+      } catch (compErr) {
+        console.warn("Client compression failed, falling back to FileReader:", compErr);
+        imageBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+      setSelectedImg(imageBase64);
+      await updateProfile({ profilePic: imageBase64 });
     } catch {
       toast.error("Failed to process image. Please try again.");
     } finally {
